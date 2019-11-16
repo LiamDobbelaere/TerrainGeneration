@@ -5,9 +5,8 @@ using UnityEngine;
 [RequireComponent(typeof(MeshFilter), typeof(MeshRenderer))]
 public class ProceduralTerrain : MonoBehaviour
 {
-    public float noiseScale = 10f;
-    public float heightScale = 20f;
     public Texture2D heightmap;
+    public bool useHeightmap = false;
     public int xSize, ySize;
     private Vector3[] vertices;
     private Color[] colors;
@@ -21,8 +20,6 @@ public class ProceduralTerrain : MonoBehaviour
 
     void Awake()
     {
-        heightmap = new Texture2D(xSize, ySize);
-
         GetComponent<MeshFilter>().sharedMesh = new Mesh();
         GetComponent<MeshFilter>().mesh.name = "Procedural Terrain";
 
@@ -42,66 +39,97 @@ public class ProceduralTerrain : MonoBehaviour
 
     void Generate()
     {
-        Mesh mesh = GetComponent<MeshFilter>().mesh;
+        MeshData terrain = new MeshData();
 
-        vertices = new Vector3[(xSize + 1) * (ySize + 1)];
-        colors = new Color[(xSize + 1) * (ySize + 1)];
-        for (int i = 0, y = 0; y <= ySize; y++)
+        for (int y = 0; y < ySize - 1; y++)
         {
-            for (int x = 0; x <= xSize; x++, i++)
+            for (int x = 0; x < xSize - 1; x++)
             {
-                float height = Mathf.PerlinNoise(seed + ((float) x / xSize * noiseScale), seed + ((float) y / ySize * noiseScale));
+                float amplitude = 20f;
+                float noiseScale = 3f;
+                bool flip = x % 2 == 1;
+                if (y % 2 == 1)
+                {
+                    flip = !flip;
+                }
 
-                vertices[i] = new Vector3(x, height * heightScale, y);
+                float z = Mathf.PerlinNoise(
+                    seed + ((float)x / xSize * 2f) * noiseScale, 
+                    seed + ((float)y / ySize * 2f) * noiseScale);
+                float zNextX = Mathf.PerlinNoise(
+                    seed + ((float)(x + 1) / xSize * 2f) * noiseScale, 
+                    seed + ((float)y / ySize * 2f) * noiseScale);
+                float zNextY = Mathf.PerlinNoise(
+                    seed + ((float)x / xSize * 2f) * noiseScale, 
+                    seed + ((float)(y + 1) / ySize * 2f) * noiseScale);
+                float zNextXY = Mathf.PerlinNoise(
+                    seed + ((float)(x + 1) / xSize * 2f) * noiseScale, 
+                    seed + ((float)(y + 1) / ySize * 2f) * noiseScale);
 
-                Debug.Log(height);
-                heightmap.SetPixel(x, y, new Color(height, height, height, 1f));
-                
-                if (height < 0.2f)
+                if (useHeightmap)
                 {
-                    colors[i] = new Color(0, 0.7f, 0.7f);
+                    z = heightmap.GetPixel(x, y).r;
+                    zNextX = heightmap.GetPixel(x + 1, y).r;
+                    zNextY = heightmap.GetPixel(x, y + 1).r;
+                    zNextXY = heightmap.GetPixel(x + 1, y + 1).r;
                 }
-                else if (height < 0.3f)
+
+                Color c1 = Color.Lerp(GetColorForHeight(z), Color.white, Random.Range(0.0f, 0.12f));
+                Color c2 = Color.Lerp(GetColorForHeight(z), Color.white, Random.Range(0.0f, 0.12f));
+
+                if (flip)
                 {
-                    colors[i] = new Color(0.761f, 0.698f, 0.502f);
-                }
-                else if (height < 0.6f)
-                {
-                    colors[i] = new Color(0, 0.2f, 0);
-                }
-                else if (height < 0.7f)
-                {
-                    colors[i] = new Color(0.3f, 0.3f, 0.3f);
+                    terrain.AddTriangle(
+                        new Vector3(x, z * amplitude, y),
+                        new Vector3(x, zNextY * amplitude, y + 1),
+                        new Vector3(x + 1, zNextXY * amplitude, y + 1),
+                        c1);
+                    terrain.AddTriangle(
+                        new Vector3(x, z * amplitude, y),
+                        new Vector3(x + 1, zNextXY * amplitude, y + 1),
+                        new Vector3(x + 1, zNextX * amplitude, y),
+                        c2);
                 }
                 else
                 {
-                    colors[i] = Color.white;
+                    terrain.AddTriangle(
+                        new Vector3(x, z * amplitude, y),
+                        new Vector3(x, zNextY * amplitude, y + 1),
+                        new Vector3(x + 1, zNextX * amplitude, y),
+                        c1);
+                    terrain.AddTriangle(
+                        new Vector3(x + 1, zNextX * amplitude, y),
+                        new Vector3(x, zNextY * amplitude, y + 1),
+                        new Vector3(x + 1, zNextXY * amplitude, y + 1),
+                        c2);
                 }
             }
         }
-        mesh.vertices = vertices;
-        mesh.colors = colors;
 
-        int[] triangles = new int[xSize * ySize * 6];
-        for (int ti = 0, vi = 0, y = 0; y < ySize; y++, vi++)
-        {
-            for (int x = 0; x < xSize; x++, ti += 6, vi++)
-            {
-                triangles[ti] = vi;
-                triangles[ti + 3] = triangles[ti + 2] = vi + 1;
-                triangles[ti + 4] = triangles[ti + 1] = vi + xSize + 1;
-                triangles[ti + 5] = vi + xSize + 2;
-            }
-        }
-        mesh.triangles = triangles;
-
-        mesh.RecalculateNormals();
-
-        heightmap.Apply();
+        GetComponent<MeshFilter>().mesh = terrain.ToMesh();
     }
 
-    void FlatShading()
+    private Color GetColorForHeight(float height)
     {
-
+        if (height < 0.2f)
+        {
+            return new Color(0, 0.7f, 0.7f);
+        }
+        else if (height < 0.3f)
+        {
+            return new Color(0.761f, 0.698f, 0.502f);
+        }
+        else if (height < 0.6f)
+        {
+            return new Color(0, 0.2f, 0);
+        }
+        else if (height < 0.7f)
+        {
+            return new Color(0.3f, 0.3f, 0.3f);
+        }
+        else
+        {
+            return Color.white;
+        }
     }
 }

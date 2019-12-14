@@ -2,24 +2,14 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public abstract class State<T> where T : MonoBehaviour
-{
-    public T Self { get; set; }
-
-    public virtual void Enter(State<T> previousState) { }
-    public virtual void Update() { }
-    public virtual void FixedUpdate() { }
-    public virtual void Exit(State<T> nextState) { }
-
-    public State<T> Bind(T newSelf)
-    {
-        Self = newSelf;
-        return this;
-    }
-}
 
 public class PufferfishWaterState : State<Pufferfish>
 {
+    public PufferfishWaterState(Pufferfish self) : base(self)
+    {
+
+    }
+
     public override void Enter(State<Pufferfish> previousState)
     {
         Self.inWater = true;
@@ -48,6 +38,11 @@ public class PufferfishLandState : State<Pufferfish>
 {
     private Transform waterVolume;
     private float jumpTime;
+
+    public PufferfishLandState(Pufferfish self) : base(self)
+    {
+
+    }
 
     public override void Enter(State<Pufferfish> previousState)
     {
@@ -97,56 +92,24 @@ public class PufferfishLandState : State<Pufferfish>
     }
 }
 
-public class Pufferfish : MonoBehaviour
+public class Pufferfish : BaseEntity<Pufferfish>
 {
-    public bool inWater;
-    public Rigidbody rb;
-    public float currentSurfaceLevel;
-    public float surfaceLevel;
-
-    private State<Pufferfish> currentState = null;
+    internal bool inWater;
+    internal Rigidbody rb;
+    internal float currentSurfaceLevel;
+    internal float surfaceLevel;
 
 
     // Start is called before the first frame update
-    void Start()
+    public override void Start()
     {
+        base.Start();
+
         rb = GetComponent<Rigidbody>();
-        this.TransitionState(new PufferfishLandState().Bind(this));
-    }
 
-    // Update is called once per frame
-    void Update()
-    {
-        if (currentState != null)
-        {
-            currentState.Update();
-        }
-    }
-
-    void FixedUpdate()
-    {
-        if (currentState != null)
-        {
-            currentState.FixedUpdate();
-        }
-    }
-
-    void TransitionState(State<Pufferfish> newState)
-    {
-        if (currentState == newState)
-        {
-            return;
-        }
-
-        if (currentState != null)
-        {
-            currentState.Exit(newState);
-        }
-
-        State<Pufferfish> lastState = currentState;
-
-        currentState = newState;
-        currentState.Enter(lastState);
+        StateMachine.AddState(new PufferfishLandState(this));
+        StateMachine.AddState(new PufferfishWaterState(this));
+        StateMachine.ChangeState(typeof(PufferfishLandState));
     }
 
     void OnTriggerEnter(Collider other)
@@ -156,7 +119,7 @@ public class Pufferfish : MonoBehaviour
             surfaceLevel = other.bounds.max.y;
             currentSurfaceLevel = surfaceLevel;
 
-            this.TransitionState(new PufferfishWaterState().Bind(this));
+            this.StateMachine.ChangeState(typeof(PufferfishWaterState));
         }
     }
 
@@ -164,7 +127,7 @@ public class Pufferfish : MonoBehaviour
     {
         if (other.CompareTag("WaterVolume"))
         {
-            this.TransitionState(new PufferfishLandState().Bind(this));
+            this.StateMachine.ChangeState(typeof(PufferfishLandState));
         }
     }
 

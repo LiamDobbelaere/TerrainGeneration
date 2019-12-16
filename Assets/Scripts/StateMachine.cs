@@ -2,26 +2,26 @@
 using System.Collections.Generic;
 using UnityEngine;
 
-public class StateMachine<T> where T: MonoBehaviour
+public class StateMachine
 {
-    public State<T> CurrentState { get; private set; } = null;
+    public State CurrentState { get; private set; } = null;
 
-    private Dictionary<System.Type, State<T>> availableStates;
+    private Dictionary<System.Type, State> availableStates;
 
     public StateMachine()
     {
-        this.availableStates = new Dictionary<System.Type, State<T>>();
+        this.availableStates = new Dictionary<System.Type, State>();
     }
 
-    public void AddState(State<T> state)
+    public void AddState(State state)
     {
         this.availableStates[state.GetType()] = state;
     }
 
     public void ChangeState(System.Type stateType)
     {
-        State<T> previousState = this.CurrentState;
-        State<T> nextState = this.availableStates[stateType];
+        State previousState = this.CurrentState;
+        State nextState = this.availableStates[stateType];
 
         if (this.CurrentState != null)
         {
@@ -48,17 +48,17 @@ public class StateMachine<T> where T: MonoBehaviour
         }
     }
 }
-public abstract class State<T> where T : MonoBehaviour
+public abstract class State
 {
-    public T Self { get; set; }
+    public BaseEntity Self { get; set; }
 
-    public State(T self)
+    public State(BaseEntity self)
     {
         Self = self;
     }
 
-    public virtual void Enter(State<T> previousState) { }
+    public virtual void Enter(State previousState) { }
     public virtual void Update() { }
     public virtual void FixedUpdate() { }
-    public virtual void Exit(State<T> nextState) { }
+    public virtual void Exit(State nextState) { }
 }

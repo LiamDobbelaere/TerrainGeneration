@@ -3,14 +3,14 @@ using System.Collections.Generic;
 using UnityEngine;
 
 
-public class PufferfishWaterState : State<Pufferfish>
+public class PufferfishWaterState : State
 {
     public PufferfishWaterState(Pufferfish self) : base(self)
     {
 
     }
 
-    public override void Enter(State<Pufferfish> previousState)
+    public override void Enter(State previousState)
     {
         Self.inWater = true;
         Self.rb.useGravity = false;
@@ -27,14 +27,14 @@ public class PufferfishWaterState : State<Pufferfish>
         Self.currentSurfaceLevel = Mathf.Lerp(Self.currentSurfaceLevel, Self.surfaceLevel - Random.Range(0f, 1f), Time.fixedDeltaTime);
     }
 
-    public override void Exit(State<Pufferfish> nextState)
+    public override void Exit(State nextState)
     {
         Self.inWater = false;
         Self.rb.useGravity = true;
     }
 }
 
-public class PufferfishLandState : State<Pufferfish>
+public class PufferfishLandState : State
 {
     private Transform waterVolume;
     private float jumpTime;
@@ -44,7 +44,7 @@ public class PufferfishLandState : State<Pufferfish>
 
     }
 
-    public override void Enter(State<Pufferfish> previousState)
+    public override void Enter(State previousState)
     {
         jumpTime = 0f;
 
@@ -86,54 +86,21 @@ public class PufferfishLandState : State<Pufferfish>
         }
     }
 
-    public override void Exit(State<Pufferfish> nextState)
+    public override void Exit(State nextState)
     {
 
     }
 }
 
-public class Pufferfish : BaseEntity<Pufferfish>
+public class Pufferfish : BaseEntity
 {
-    internal bool inWater;
-    internal Rigidbody rb;
-    internal float currentSurfaceLevel;
-    internal float surfaceLevel;
-
-
     // Start is called before the first frame update
     public override void Start()
     {
         base.Start();
 
-        rb = GetComponent<Rigidbody>();
-
         StateMachine.AddState(new PufferfishLandState(this));
         StateMachine.AddState(new PufferfishWaterState(this));
         StateMachine.ChangeState(typeof(PufferfishLandState));
-    }
-
-    void OnTriggerEnter(Collider other)
-    {
-        if (other.CompareTag("WaterVolume"))
-        {
-            surfaceLevel = other.bounds.max.y;
-            currentSurfaceLevel = surfaceLevel;
-
-            this.StateMachine.ChangeState(typeof(PufferfishWaterState));
-        }
-    }
-
-    void OnTriggerExit(Collider other)
-    {
-        if (other.CompareTag("WaterVolume"))
-        {
-            this.StateMachine.ChangeState(typeof(PufferfishLandState));
-        }
-    }
-
-    void OnTriggerStay(Collider other)
-    {
-
-
     }
 }

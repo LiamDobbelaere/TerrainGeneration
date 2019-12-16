@@ -10,27 +10,10 @@ public class PufferfishWaterState : State
 
     }
 
-    public override void Enter(State previousState)
-    {
-        Self.inWater = true;
-        Self.rb.useGravity = false;
-        Self.rb.velocity = Self.rb.velocity * 0.25f;
-    }
     public override void FixedUpdate()
     {
-        Vector3 position = Self.transform.position;
-        Vector3 target = new Vector3(position.x, Self.currentSurfaceLevel, position.z);
-
         Self.rb.AddForce(Self.transform.right * 1f);
         Self.rb.AddTorque(new Vector3(0f, 0f, 1f) * Random.Range(-500f, 500f));
-
-        Self.currentSurfaceLevel = Mathf.Lerp(Self.currentSurfaceLevel, Self.surfaceLevel - Random.Range(0f, 1f), Time.fixedDeltaTime);
-    }
-
-    public override void Exit(State nextState)
-    {
-        Self.inWater = false;
-        Self.rb.useGravity = true;
     }
 }
 
@@ -48,21 +31,7 @@ public class PufferfishLandState : State
     {
         jumpTime = 0f;
 
-        List<GameObject> waterVolumes = new List<GameObject>(GameObject.FindGameObjectsWithTag("WaterVolume"));
-        float closestDistance = Mathf.Infinity;
-        GameObject closest = null;
-        waterVolumes.ForEach(wv =>
-        {
-            float d = Vector3.Distance(wv.transform.position, Self.transform.position);
-
-            if (d < closestDistance)
-            {
-                closestDistance = d;
-                closest = wv;
-            }
-        });
-
-        waterVolume = closest.transform;
+        waterVolume = Self.NearestGameObjectWithTag("WaterVolume").transform;
     }
 
     public override void FixedUpdate()

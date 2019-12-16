@@ -5,9 +5,8 @@ using UnityEngine;
 public class BaseEntity : MonoBehaviour
 {
     internal bool inWater;
+    internal float waterSurfaceLevel;
     internal Rigidbody rb;
-    internal float currentSurfaceLevel;
-    internal float surfaceLevel;
 
     public StateMachine StateMachine { get; }
 
@@ -16,31 +15,31 @@ public class BaseEntity : MonoBehaviour
         this.StateMachine = new StateMachine();
     }
 
-    // Start is called before the first frame update
     public virtual void Start()
     {
         rb = GetComponent<Rigidbody>();
     }
 
-    // Update is called once per frame
     public virtual void Update()
     {
-        this.StateMachine.Update();
+        StateMachine.Update();
     }
 
     public virtual void FixedUpdate()
     {
-        this.StateMachine.FixedUpdate();
+        StateMachine.FixedUpdate();
     }
 
     void OnTriggerEnter(Collider other)
     {
         if (other.CompareTag("WaterVolume"))
         {
-            surfaceLevel = other.bounds.max.y;
-            currentSurfaceLevel = surfaceLevel;
+            rb.useGravity = false;
+            rb.velocity = rb.velocity * 0.25f;
 
-            this.StateMachine.ChangeState(typeof(PufferfishWaterState));
+            waterSurfaceLevel = other.bounds.max.y;
+
+            StateMachine.ChangeState(typeof(PufferfishWaterState));
         }
     }
 
@@ -48,7 +47,29 @@ public class BaseEntity : MonoBehaviour
     {
         if (other.CompareTag("WaterVolume"))
         {
-            this.StateMachine.ChangeState(typeof(PufferfishLandState));
+            inWater = false;
+            rb.useGravity = true;
+
+            StateMachine.ChangeState(typeof(PufferfishLandState));
         }
+    }
+
+    public GameObject NearestGameObjectWithTag(string tag)
+    {
+        List<GameObject> gameObjects= new List<GameObject>(GameObject.FindGameObjectsWithTag(tag));
+        float closestDistance = Mathf.Infinity;
+        GameObject closest = null;
+        gameObjects.ForEach(wv =>
+        {
+            float d = Vector3.Distance(wv.transform.position, transform.position);
+
+            if (d < closestDistance)
+            {
+                closestDistance = d;
+                closest = wv;
+            }
+        });
+
+        return closest;
     }
 }
